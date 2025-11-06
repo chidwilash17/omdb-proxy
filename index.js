@@ -5,15 +5,58 @@ const cors = require("cors");
 const app = express();
 app.use(cors());
 
-const OMDB_API_KEY = "52709a6e"; // Replace with your key
+const OMDB_API_KEY = "52709a6e"; // Replace with your actual OMDb API key
 
+// Route 1: /movie?title=...&year=...&id=...
 app.get("/movie", async (req, res) => {
-  const { title } = req.query;
-  if (!title) return res.status(400).json({ error: "Missing title" });
+  const { title, year, id } = req.query;
+
+  if (!title && !id) {
+    return res.status(400).json({ error: "Missing title or IMDb ID" });
+  }
+
+  let omdbUrl = `https://www.omdbapi.com/?apikey=${OMDB_API_KEY}`;
+  if (id) {
+    omdbUrl += `&i=${encodeURIComponent(id)}`;
+  } else {
+    omdbUrl += `&t=${encodeURIComponent(title)}`;
+  }
+  if (year) {
+    omdbUrl += `&y=${encodeURIComponent(year)}`;
+  }
 
   try {
-    const response = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&t=${encodeURIComponent(title)}`);
+    const response = await fetch(omdbUrl);
     const data = await response.json();
+    console.log(`OMDb response for ${title || id}:`, data);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch from OMDb", details: err.message });
+  }
+});
+
+// Route 2: OMDb-style /?t=...&y=...&i=...
+app.get("/", async (req, res) => {
+  const { t, y, i } = req.query;
+
+  if (!t && !i) {
+    return res.status(400).json({ error: "Missing title or IMDb ID" });
+  }
+
+  let omdbUrl = `https://www.omdbapi.com/?apikey=${OMDB_API_KEY}`;
+  if (i) {
+    omdbUrl += `&i=${encodeURIComponent(i)}`;
+  } else {
+    omdbUrl += `&t=${encodeURIComponent(t)}`;
+  }
+  if (y) {
+    omdbUrl += `&y=${encodeURIComponent(y)}`;
+  }
+
+  try {
+    const response = await fetch(omdbUrl);
+    const data = await response.json();
+    console.log(`OMDb response for ${t || i}:`, data);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch from OMDb", details: err.message });
@@ -21,4 +64,4 @@ app.get("/movie", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Proxy running on port ${PORT}`));
+app.listen(PORT, () => console.log(`OMDb proxy running on port ${PORT}`));
